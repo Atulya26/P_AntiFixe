@@ -458,6 +458,7 @@ export function SpiralGallery({ projects }: SpiralGalleryProps) {
                   opacity: card.opacity,
                   zIndex: card.zIndex,
                   backfaceVisibility: "hidden",
+                  transition: "transform 0.08s ease-out, opacity 0.15s ease-out",
                 }}
                 onClick={(e) => !isMobile && handleCardClick(card, e)}
                 onTouchEnd={(e) => isMobile && handleCardTap(card, e)}

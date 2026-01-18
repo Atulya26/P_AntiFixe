@@ -57,6 +57,8 @@ export function ImageDetailView({
 }: ImageDetailViewProps) {
   const [phase, setPhase] = useState<"entering" | "active" | "scrollable" | "exiting">("entering")
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [previousImageIndex, setPreviousImageIndex] = useState<number | null>(null)
+  const [isTransitioning, setIsTransitioning] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 })
@@ -69,6 +71,7 @@ export function ImageDetailView({
   const scrollAccumulatorRef = useRef(0)
   const scrollCooldownRef = useRef(false)
   const touchRef = useRef({ startX: 0, startY: 0, startTime: 0 })
+  const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Fetch animation settings
   useEffect(() => {
@@ -93,6 +96,26 @@ export function ImageDetailView({
 
   const allImages = images.length > 0 ? images : [imageUrl]
   const currentImage = allImages[currentImageIndex] || imageUrl
+
+  // Smooth image transition handler
+  const changeImage = useCallback((newIndex: number) => {
+    if (newIndex === currentImageIndex || isTransitioning) return
+
+    // Clear any existing timeout
+    if (transitionTimeoutRef.current) {
+      clearTimeout(transitionTimeoutRef.current)
+    }
+
+    setPreviousImageIndex(currentImageIndex)
+    setIsTransitioning(true)
+    setCurrentImageIndex(newIndex)
+
+    // Clear transition state after animation completes
+    transitionTimeoutRef.current = setTimeout(() => {
+      setPreviousImageIndex(null)
+      setIsTransitioning(false)
+    }, Math.round(durations.transition * 1000) + 50)
+  }, [currentImageIndex, isTransitioning, durations.transition])
 
   const handleClose = useCallback(() => {
     setPhase("exiting")
@@ -198,12 +221,12 @@ export function ImageDetailView({
           if (direction > 0) {
             // Scroll down - go to next image
             if (currentImageIndex < allImages.length - 1) {
-              setCurrentImageIndex((prev) => prev + 1)
+              changeImage(currentImageIndex + 1)
             }
           } else {
             // Scroll up - go to previous image or hide details or close
             if (currentImageIndex > 0) {
-              setCurrentImageIndex((prev) => prev - 1)
+              changeImage(currentImageIndex - 1)
             } else {
               // At first image, hide details first
               setShowDetails(false)
@@ -247,10 +270,10 @@ export function ImageDetailView({
       // Horizontal swipe - navigate images
       if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) && deltaTime < 500) {
         if (deltaX < 0 && currentImageIndex < allImages.length - 1) {
-          setCurrentImageIndex((prev) => prev + 1)
+          changeImage(currentImageIndex + 1)
           if (!showDetails) setShowDetails(true)
         } else if (deltaX > 0 && currentImageIndex > 0) {
-          setCurrentImageIndex((prev) => prev - 1)
+          changeImage(currentImageIndex - 1)
         }
       }
 
@@ -263,7 +286,7 @@ export function ImageDetailView({
       if (deltaY > 50 && Math.abs(deltaY) > Math.abs(deltaX) && deltaTime < 500) {
         if (showDetails) {
           if (currentImageIndex > 0) {
-            setCurrentImageIndex((prev) => prev - 1)
+            changeImage(currentImageIndex - 1)
           } else {
             setShowDetails(false)
           }
@@ -287,16 +310,16 @@ export function ImageDetailView({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") handleClose()
       if (e.key === "ArrowRight" && currentImageIndex < allImages.length - 1) {
-        setCurrentImageIndex((prev) => prev + 1)
+        changeImage(currentImageIndex + 1)
         if (!showDetails) setShowDetails(true)
       }
       if (e.key === "ArrowLeft" && currentImageIndex > 0) {
-        setCurrentImageIndex((prev) => prev - 1)
+        changeImage(currentImageIndex - 1)
       }
     }
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [currentImageIndex, allImages.length, showDetails])
+  }, [currentImageIndex, allImages.length, showDetails, changeImage, handleClose])
 
   const getImageStyle = () => {
     if (phase === "entering") {
@@ -382,27 +405,49 @@ export function ImageDetailView({
         }}
       />
 
-      {allImages.map((img, idx) => (
-        <img
-          key={idx}
-          ref={idx === currentImageIndex ? imageRef : undefined}
-          src={img || "/placeholder.svg"}
-          alt={`${displayTitle} - Image ${idx + 1}`}
-          crossOrigin="anonymous"
-          onLoad={idx === currentImageIndex ? handleImageLoad : undefined}
-          style={{
-            ...getImageStyle(),
-            opacity: idx === currentImageIndex ? 1 : 0,
-            zIndex: idx === currentImageIndex ? 10 : 5,
-            transition:
-              phase === "active"
-                ? `all ${durations.enter}s ${easing}`
-                : phase === "exiting"
-                  ? `all ${durations.exit}s ${easing}`
-                  : `opacity ${durations.transition}s ${smoothSpringEasing}`,
-          }}
-        />
-      ))}
+      {allImages.map((img, idx) => {
+        const isCurrent = idx === currentImageIndex
+        const isPrevious = idx === previousImageIndex
+        const isVisible = isCurrent || isPrevious
+
+        // Coordinated crossfade: outgoing scales down, incoming scales up
+        const getImageOpacity = () => {
+          if (isCurrent) return 1
+          if (isPrevious && isTransitioning) return 0
+          return 0
+        }
+
+        const getImageScale = () => {
+          if (phase === "entering" || phase === "exiting") return 1
+          if (isCurrent && isTransitioning) return 1 // Incoming starts at 1
+          if (isPrevious && isTransitioning) return 0.98 // Outgoing scales down slightly
+          return 1
+        }
+
+        return (
+          <img
+            key={idx}
+            ref={isCurrent ? imageRef : undefined}
+            src={img || "/placeholder.svg"}
+            alt={`${displayTitle} - Image ${idx + 1}`}
+            crossOrigin="anonymous"
+            onLoad={isCurrent ? handleImageLoad : undefined}
+            style={{
+              ...getImageStyle(),
+              opacity: getImageOpacity(),
+              transform: `scale(${getImageScale()})`,
+              zIndex: isCurrent ? 10 : isPrevious ? 8 : 5,
+              willChange: isVisible ? "opacity, transform" : "auto",
+              transition:
+                phase === "active"
+                  ? `all ${durations.enter}s ${easing}`
+                  : phase === "exiting"
+                    ? `all ${durations.exit}s ${easing}`
+                    : `opacity ${durations.transition * 0.8}s ${smoothSpringEasing}, transform ${durations.transition}s ${smoothSpringEasing}`,
+            }}
+          />
+        )
+      })}
 
       <button
         onClick={handleClose}
@@ -424,7 +469,7 @@ export function ImageDetailView({
         <>
           <button
             onClick={() => {
-              if (currentImageIndex > 0) setCurrentImageIndex((prev) => prev - 1)
+              if (currentImageIndex > 0) changeImage(currentImageIndex - 1)
             }}
             className={`fixed left-3 md:left-6 top-1/2 -translate-y-1/2 z-[1100] p-3 md:p-3 rounded-full backdrop-blur-md ${bgColorClass} ${textColorClass} border ${borderColorClass}`}
             style={{
@@ -439,7 +484,7 @@ export function ImageDetailView({
           </button>
           <button
             onClick={() => {
-              if (currentImageIndex < allImages.length - 1) setCurrentImageIndex((prev) => prev + 1)
+              if (currentImageIndex < allImages.length - 1) changeImage(currentImageIndex + 1)
             }}
             className={`fixed right-3 md:right-6 top-1/2 -translate-y-1/2 z-[1100] p-3 md:p-3 rounded-full backdrop-blur-md ${bgColorClass} ${textColorClass} border ${borderColorClass}`}
             style={{
@@ -504,16 +549,15 @@ export function ImageDetailView({
                 {allImages.map((_, idx) => (
                   <button
                     key={idx}
-                    onClick={() => setCurrentImageIndex(idx)}
-                    className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                      idx === currentImageIndex
-                        ? isLightImage
-                          ? "bg-black"
-                          : "bg-white"
-                        : isLightImage
-                          ? "bg-black/30"
-                          : "bg-white/30"
-                    }`}
+                    onClick={() => changeImage(idx)}
+                    className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === currentImageIndex
+                      ? isLightImage
+                        ? "bg-black"
+                        : "bg-white"
+                      : isLightImage
+                        ? "bg-black/30"
+                        : "bg-white/30"
+                      }`}
                     style={{
                       minWidth: isMobile ? "10px" : "8px",
                       minHeight: isMobile ? "10px" : "8px",
