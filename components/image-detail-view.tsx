@@ -408,21 +408,23 @@ export function ImageDetailView({
       {allImages.map((img, idx) => {
         const isCurrent = idx === currentImageIndex
         const isPrevious = idx === previousImageIndex
-        const isVisible = isCurrent || isPrevious
 
-        // Coordinated crossfade: outgoing scales down, incoming scales up
-        const getImageOpacity = () => {
-          if (isCurrent) return 1
-          if (isPrevious && isTransitioning) return 0
-          return 0
+        // Only render current and previous images during transition, otherwise only current
+        const shouldRender = isCurrent || (isPrevious && isTransitioning)
+        if (!shouldRender && phase !== "entering" && phase !== "exiting") {
+          return null
         }
 
-        const getImageScale = () => {
-          if (phase === "entering" || phase === "exiting") return 1
-          if (isCurrent && isTransitioning) return 1 // Incoming starts at 1
-          if (isPrevious && isTransitioning) return 0.98 // Outgoing scales down slightly
-          return 1
+        // During exit, only show the first image (the one that expands from card)
+        if (phase === "exiting" && idx !== 0) {
+          return null
         }
+
+        // Simple opacity: current=1, previous during transition=0
+        const opacity = isCurrent ? 1 : 0
+
+        // Z-index: current always on top
+        const zIndex = phase === "exiting" ? 10 : (isCurrent ? 10 : 5)
 
         return (
           <img
@@ -434,16 +436,15 @@ export function ImageDetailView({
             onLoad={isCurrent ? handleImageLoad : undefined}
             style={{
               ...getImageStyle(),
-              opacity: getImageOpacity(),
-              transform: `scale(${getImageScale()})`,
-              zIndex: isCurrent ? 10 : isPrevious ? 8 : 5,
-              willChange: isVisible ? "opacity, transform" : "auto",
+              opacity,
+              zIndex,
+              willChange: "opacity, transform",
               transition:
                 phase === "active"
                   ? `all ${durations.enter}s ${easing}`
                   : phase === "exiting"
                     ? `all ${durations.exit}s ${easing}`
-                    : `opacity ${durations.transition * 0.8}s ${smoothSpringEasing}, transform ${durations.transition}s ${smoothSpringEasing}`,
+                    : `opacity ${durations.transition * 0.6}s ${smoothSpringEasing}`,
             }}
           />
         )

@@ -50,8 +50,8 @@ const getConfig = (isMobile: boolean) => ({
   },
   physics: {
     enabled: true,
-    momentum: 0.96,
-    maxVelocity: 15,
+    momentum: 0.98, // Increased from 0.96 for heavier feel
+    maxVelocity: 12, // Reduced from 15 for more controlled movement
     bounceStrength: 0.3,
     tiltStrength: 0.1,
   },
@@ -60,12 +60,12 @@ const getConfig = (isMobile: boolean) => ({
     amplitudeX: isMobile ? 25 : 50,
     amplitudeY: isMobile ? 18 : 35,
     frequency: 0.5,
-    velocityMultiplier: 12,
-    decay: 0.94,
+    velocityMultiplier: 10, // Reduced from 12 for subtler wave
+    decay: 0.96, // Increased from 0.94 for longer wave
   },
-  scrollSensitivity: 0.0003,
-  touchSensitivity: isMobile ? 0.003 : 0.0008,
-  smoothing: 0.035,
+  scrollSensitivity: 0.00018, // Reduced from 0.0003 for heavier feel
+  touchSensitivity: isMobile ? 0.002 : 0.0006, // Reduced for heavier feel
+  smoothing: 0.018, // Reduced from 0.035 for slower catchup (heavier momentum)
   focalEffect: {
     enabled: true,
     scaleBoost: 0.18,
@@ -458,7 +458,6 @@ export function SpiralGallery({ projects }: SpiralGalleryProps) {
                   opacity: card.opacity,
                   zIndex: card.zIndex,
                   backfaceVisibility: "hidden",
-                  transition: "transform 0.08s ease-out, opacity 0.15s ease-out",
                 }}
                 onClick={(e) => !isMobile && handleCardClick(card, e)}
                 onTouchEnd={(e) => isMobile && handleCardTap(card, e)}
