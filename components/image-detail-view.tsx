@@ -407,24 +407,20 @@ export function ImageDetailView({
 
       {allImages.map((img, idx) => {
         const isCurrent = idx === currentImageIndex
-        const isPrevious = idx === previousImageIndex
+        const isPrevious = idx === previousImageIndex && isTransitioning
 
-        // Only render current and previous images during transition, otherwise only current
-        const shouldRender = isCurrent || (isPrevious && isTransitioning)
-        if (!shouldRender && phase !== "entering" && phase !== "exiting") {
-          return null
+        // During enter/exit, only show the initial image (index 0 for animation back to card)
+        if (phase === "entering" || phase === "exiting") {
+          if (idx !== 0) return null
+        } else {
+          // During scrollable phase, only render current and previous (if transitioning)
+          if (!isCurrent && !isPrevious) return null
         }
 
-        // During exit, only show the first image (the one that expands from card)
-        if (phase === "exiting" && idx !== 0) {
-          return null
-        }
-
-        // Simple opacity: current=1, previous during transition=0
-        const opacity = isCurrent ? 1 : 0
-
-        // Z-index: current always on top
-        const zIndex = phase === "exiting" ? 10 : (isCurrent ? 10 : 5)
+        // Crossfade: current is always visible (base layer), previous fades OUT on top
+        // This creates the effect of the old image dissolving to reveal the new one
+        const opacity = isPrevious ? 0 : 1
+        const zIndex = isPrevious ? 15 : 10 // Previous on top so it fades OUT over current
 
         return (
           <img
@@ -444,7 +440,7 @@ export function ImageDetailView({
                   ? `all ${durations.enter}s ${easing}`
                   : phase === "exiting"
                     ? `all ${durations.exit}s ${easing}`
-                    : `opacity ${durations.transition * 0.6}s ${smoothSpringEasing}`,
+                    : `opacity ${durations.transition}s ease-out`,
             }}
           />
         )
