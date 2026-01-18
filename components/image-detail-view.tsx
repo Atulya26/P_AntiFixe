@@ -428,19 +428,9 @@ export function ImageDetailView({
           if (!isCurrent && !isPrevious) return null
         }
 
-        // Crossfade animation:
-        // - Current image is at full opacity (base layer)
-        // - Previous image starts at opacity 1, then fades to 0 when fadeOutPrevious triggers
-        let opacity = 1
-        let scale = 1
-        let zIndex = 10
-
-        if (isPrevious) {
-          // Previous image: starts at 1, fades to 0 after frame delay
-          opacity = fadeOutPrevious ? 0 : 1
-          scale = fadeOutPrevious ? 0.97 : 1
-          zIndex = 15 // On top so we see it fade out
-        }
+        // Crossfade animation: pure opacity fade, no scale/transform to avoid sweep effect
+        const opacity = isPrevious ? (fadeOutPrevious ? 0 : 1) : 1
+        const zIndex = isPrevious ? 15 : 10 // Previous on top so we see it fade out
 
         return (
           <img
@@ -454,14 +444,13 @@ export function ImageDetailView({
               ...getImageStyle(),
               opacity,
               zIndex,
-              transform: phase === "scrollable" ? `scale(${scale})` : undefined,
-              willChange: "opacity, transform",
+              willChange: "opacity",
               transition:
                 phase === "active"
                   ? `all ${durations.enter}s ${easing}`
                   : phase === "exiting"
                     ? `all ${durations.exit}s ${easing}`
-                    : `opacity ${durations.transition * 0.5}s ease-out, transform ${durations.transition * 0.4}s ease-out`,
+                    : `opacity ${durations.transition * 0.4}s ease-out`,
             }}
           />
         )
