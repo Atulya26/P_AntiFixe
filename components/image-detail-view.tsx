@@ -59,6 +59,7 @@ export function ImageDetailView({
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [previousImageIndex, setPreviousImageIndex] = useState<number | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [fadeOutPrevious, setFadeOutPrevious] = useState(false) // Delayed fade trigger
   const [showDetails, setShowDetails] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 })
@@ -97,7 +98,7 @@ export function ImageDetailView({
   const allImages = images.length > 0 ? images : [imageUrl]
   const currentImage = allImages[currentImageIndex] || imageUrl
 
-  // Smooth image transition handler
+  // Smooth image transition handler with frame-delayed fade
   const changeImage = useCallback((newIndex: number) => {
     if (newIndex === currentImageIndex || isTransitioning) return
 
@@ -106,15 +107,25 @@ export function ImageDetailView({
       clearTimeout(transitionTimeoutRef.current)
     }
 
+    // Step 1: Set up transition state (previous image renders at opacity 1)
     setPreviousImageIndex(currentImageIndex)
     setIsTransitioning(true)
+    setFadeOutPrevious(false) // Reset fade
     setCurrentImageIndex(newIndex)
 
-    // Clear transition state after animation completes
+    // Step 2: After a frame, trigger the fade-out
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setFadeOutPrevious(true)
+      })
+    })
+
+    // Step 3: Clear transition state after animation completes
     transitionTimeoutRef.current = setTimeout(() => {
       setPreviousImageIndex(null)
       setIsTransitioning(false)
-    }, Math.round(durations.transition * 1000) + 50)
+      setFadeOutPrevious(false)
+    }, Math.round(durations.transition * 1000) + 100)
   }, [currentImageIndex, isTransitioning, durations.transition])
 
   const handleClose = useCallback(() => {
@@ -409,18 +420,27 @@ export function ImageDetailView({
         const isCurrent = idx === currentImageIndex
         const isPrevious = idx === previousImageIndex && isTransitioning
 
-        // During enter/exit, only show the initial image (index 0 for animation back to card)
+        // During enter/exit, show currentImageIndex (the image that was clicked)
         if (phase === "entering" || phase === "exiting") {
-          if (idx !== 0) return null
+          if (idx !== currentImageIndex) return null
         } else {
-          // During scrollable phase, only render current and previous (if transitioning)
+          // During scrollable phase, render current and previous (if transitioning)
           if (!isCurrent && !isPrevious) return null
         }
 
-        // Crossfade: current is always visible (base layer), previous fades OUT on top
-        // This creates the effect of the old image dissolving to reveal the new one
-        const opacity = isPrevious ? 0 : 1
-        const zIndex = isPrevious ? 15 : 10 // Previous on top so it fades OUT over current
+        // Crossfade animation:
+        // - Current image is at full opacity (base layer)
+        // - Previous image starts at opacity 1, then fades to 0 when fadeOutPrevious triggers
+        let opacity = 1
+        let scale = 1
+        let zIndex = 10
+
+        if (isPrevious) {
+          // Previous image: starts at 1, fades to 0 after frame delay
+          opacity = fadeOutPrevious ? 0 : 1
+          scale = fadeOutPrevious ? 0.97 : 1
+          zIndex = 15 // On top so we see it fade out
+        }
 
         return (
           <img
@@ -434,13 +454,14 @@ export function ImageDetailView({
               ...getImageStyle(),
               opacity,
               zIndex,
+              transform: phase === "scrollable" ? `scale(${scale})` : undefined,
               willChange: "opacity, transform",
               transition:
                 phase === "active"
                   ? `all ${durations.enter}s ${easing}`
                   : phase === "exiting"
                     ? `all ${durations.exit}s ${easing}`
-                    : `opacity ${durations.transition}s ease-out`,
+                    : `opacity ${durations.transition * 0.5}s ease-out, transform ${durations.transition * 0.4}s ease-out`,
             }}
           />
         )

@@ -44,14 +44,14 @@ const getConfig = (isMobile: boolean) => ({
     radiusX: isMobile ? 180 : 420,
     radiusY: isMobile ? 140 : 280,
     centerX: isMobile ? 0 : -160,
-    centerY: isMobile ? 0 : 150,
+    centerY: isMobile ? 40 : 180, // Moved down to avoid overlapping ATULYA text
     angleStep: 0.35,
     depthScale: isMobile ? 400 : 800,
   },
   physics: {
     enabled: true,
-    momentum: 0.98, // Increased from 0.96 for heavier feel
-    maxVelocity: 12, // Reduced from 15 for more controlled movement
+    momentum: 0.96, // Slightly less for better control
+    maxVelocity: 25, // Increased for faster max scroll
     bounceStrength: 0.3,
     tiltStrength: 0.1,
   },
@@ -60,12 +60,12 @@ const getConfig = (isMobile: boolean) => ({
     amplitudeX: isMobile ? 25 : 50,
     amplitudeY: isMobile ? 18 : 35,
     frequency: 0.5,
-    velocityMultiplier: 10, // Reduced from 12 for subtler wave
-    decay: 0.96, // Increased from 0.94 for longer wave
+    velocityMultiplier: 15, // More responsive wave
+    decay: 0.94,
   },
-  scrollSensitivity: 0.00018, // Reduced from 0.0003 for heavier feel
-  touchSensitivity: isMobile ? 0.002 : 0.0006, // Reduced for heavier feel
-  smoothing: 0.018, // Reduced from 0.035 for slower catchup (heavier momentum)
+  scrollSensitivity: 0.0006, // 3x faster scroll
+  touchSensitivity: isMobile ? 0.006 : 0.003, // 3x faster touch
+  smoothing: 0.045, // Faster catchup for responsive feel
   focalEffect: {
     enabled: true,
     scaleBoost: 0.18,
@@ -292,8 +292,11 @@ export function SpiralGallery({ projects }: SpiralGalleryProps) {
 
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault()
-      const normalizedDelta = Math.sign(e.deltaY) * Math.min(Math.abs(e.deltaY), 60)
-      const delta = normalizedDelta * config.scrollSensitivity
+      // Velocity amplification: faster scrolls get amplified more
+      const rawDelta = e.deltaY
+      const velocity = Math.abs(rawDelta)
+      const amplification = 1 + Math.min(velocity / 100, 2) // Up to 3x amplification for fast scrolls
+      const delta = Math.sign(rawDelta) * Math.min(velocity, 150) * amplification * config.scrollSensitivity
       stateRef.current.targetRotation += delta
     }
 
@@ -308,7 +311,11 @@ export function SpiralGallery({ projects }: SpiralGalleryProps) {
       if (!stateRef.current.touch.isDragging) return
       e.preventDefault()
       const currentY = e.touches[0].clientY
-      const deltaY = (stateRef.current.touch.lastY - currentY) * config.touchSensitivity
+      const rawDelta = stateRef.current.touch.lastY - currentY
+      // Velocity amplification for touch
+      const velocity = Math.abs(rawDelta)
+      const amplification = 1 + Math.min(velocity / 30, 3) // Up to 4x for fast swipes
+      const deltaY = Math.sign(rawDelta) * velocity * amplification * config.touchSensitivity
       stateRef.current.targetRotation += deltaY
       stateRef.current.touch.lastY = currentY
     }
