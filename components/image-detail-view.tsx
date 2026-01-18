@@ -480,6 +480,7 @@ export function ImageDetailView({
               ...getImageStyle(),
               opacity,
               zIndex,
+              transform: "none", // FORCE disable any 3D/slide transforms
               willChange: "opacity",
               pointerEvents: "auto",
               transition:
