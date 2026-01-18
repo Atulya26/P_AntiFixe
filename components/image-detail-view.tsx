@@ -431,9 +431,42 @@ export function ImageDetailView({
           if (!isCurrent && !isPrevious) return null
         }
 
-        // Simple instant transition: current is always 100%, previous quickly fades
-        const opacity = isCurrent ? 1 : (fadeOutPrevious ? 0 : 1)
-        const zIndex = isCurrent ? 10 : 5
+        // Card Stack Transition Logic:
+        // Forward (Next): Reveal effect. Old image (Top) fades out to reveal New image (Bottom).
+        // Backward (Prev): Cover effect. New image (Top) fades in over Old image (Bottom).
+
+        let opacity = 1
+        let zIndex = 10
+
+        if (phase === "scrollable" && isTransitioning) {
+          if (slideDirection === 1) {
+            // Forward: Reveal
+            // Current (New) is at bottom, always visible
+            // Previous (Old) is on top, fading out
+            if (isCurrent) {
+              zIndex = 5
+              opacity = 1
+            } else if (isPrevious) {
+              zIndex = 10
+              opacity = fadeOutPrevious ? 0 : 1
+            }
+          } else {
+            // Backward: Cover
+            // Current (New) is on top, fading in
+            // Previous (Old) is at bottom, always visible
+            if (isCurrent) {
+              zIndex = 10
+              opacity = fadeOutPrevious ? 1 : 0
+            } else if (isPrevious) {
+              zIndex = 5
+              opacity = 1
+            }
+          }
+        } else {
+          // Default static state
+          opacity = isCurrent ? 1 : 0
+          zIndex = isCurrent ? 10 : 5
+        }
 
         return (
           <img
@@ -454,7 +487,7 @@ export function ImageDetailView({
                   ? `all ${durations.enter}s ${easing}`
                   : phase === "exiting"
                     ? `all ${durations.exit}s ${easing}`
-                    : `opacity 0.15s ease-out`, // Quick fade
+                    : `opacity 0.15s ease-out`, // Fast fade for instant feel
             }}
           />
         )
