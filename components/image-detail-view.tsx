@@ -59,7 +59,8 @@ export function ImageDetailView({
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [previousImageIndex, setPreviousImageIndex] = useState<number | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
-  const [fadeOutPrevious, setFadeOutPrevious] = useState(false) // Delayed fade trigger
+  const [fadeOutPrevious, setFadeOutPrevious] = useState(false)
+  const [slideDirection, setSlideDirection] = useState<1 | -1>(1) // 1 = forward (slide left), -1 = back (slide right)
   const [showDetails, setShowDetails] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 })
@@ -98,29 +99,30 @@ export function ImageDetailView({
   const allImages = images.length > 0 ? images : [imageUrl]
   const currentImage = allImages[currentImageIndex] || imageUrl
 
-  // Smooth image transition handler with frame-delayed fade
+  // Smooth image transition handler with slide animation
   const changeImage = useCallback((newIndex: number) => {
     if (newIndex === currentImageIndex || isTransitioning) return
 
-    // Clear any existing timeout
     if (transitionTimeoutRef.current) {
       clearTimeout(transitionTimeoutRef.current)
     }
 
-    // Step 1: Set up transition state (previous image renders at opacity 1)
+    // Determine slide direction
+    const direction = newIndex > currentImageIndex ? 1 : -1
+    setSlideDirection(direction)
+
     setPreviousImageIndex(currentImageIndex)
     setIsTransitioning(true)
-    setFadeOutPrevious(false) // Reset fade
+    setFadeOutPrevious(false)
     setCurrentImageIndex(newIndex)
 
-    // Step 2: After a frame, trigger the fade-out
+    // Trigger slide animation after a frame
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         setFadeOutPrevious(true)
       })
     })
 
-    // Step 3: Clear transition state after animation completes
     transitionTimeoutRef.current = setTimeout(() => {
       setPreviousImageIndex(null)
       setIsTransitioning(false)
@@ -428,9 +430,22 @@ export function ImageDetailView({
           if (!isCurrent && !isPrevious) return null
         }
 
-        // Crossfade animation: pure opacity fade, no scale/transform to avoid sweep effect
-        const opacity = isPrevious ? (fadeOutPrevious ? 0 : 1) : 1
-        const zIndex = isPrevious ? 15 : 10 // Previous on top so we see it fade out
+        // Slide animation: previous slides out, current slides in
+        let translateX = 0
+        let opacity = 1
+        const zIndex = isCurrent ? 10 : 5
+
+        if (phase === "scrollable" && isTransitioning) {
+          if (isPrevious) {
+            // Previous image slides out in direction of navigation
+            translateX = fadeOutPrevious ? (slideDirection * -100) : 0
+            opacity = fadeOutPrevious ? 0 : 1
+          } else if (isCurrent) {
+            // Current image slides in from opposite side
+            translateX = fadeOutPrevious ? 0 : (slideDirection * 50)
+            opacity = fadeOutPrevious ? 1 : 0.5
+          }
+        }
 
         return (
           <img
@@ -444,13 +459,14 @@ export function ImageDetailView({
               ...getImageStyle(),
               opacity,
               zIndex,
-              willChange: "opacity",
+              transform: phase === "scrollable" ? `translateX(${translateX}%)` : undefined,
+              willChange: "transform, opacity",
               transition:
                 phase === "active"
                   ? `all ${durations.enter}s ${easing}`
                   : phase === "exiting"
                     ? `all ${durations.exit}s ${easing}`
-                    : `opacity ${durations.transition * 0.4}s ease-out`,
+                    : `transform ${durations.transition * 0.4}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${durations.transition * 0.3}s ease-out`,
             }}
           />
         )
