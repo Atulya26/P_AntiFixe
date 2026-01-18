@@ -418,86 +418,47 @@ export function ImageDetailView({
         }}
       />
 
-      {/* 3D Carousel Container with perspective */}
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          perspective: "1200px",
-          perspectiveOrigin: "center center",
-          transformStyle: "preserve-3d",
-          pointerEvents: "none",
-        }}
-      >
-        {allImages.map((img, idx) => {
-          const isCurrent = idx === currentImageIndex
-          const isPrevious = idx === previousImageIndex && isTransitioning
+      {/* Simple image display - instant fade at transition */}
+      {allImages.map((img, idx) => {
+        const isCurrent = idx === currentImageIndex
+        const isPrevious = idx === previousImageIndex && isTransitioning
 
-          // During enter/exit, only show currentImageIndex
-          if (phase === "entering" || phase === "exiting") {
-            if (idx !== currentImageIndex) return null
-          } else {
-            if (!isCurrent && !isPrevious) return null
-          }
+        // During enter/exit, only show currentImageIndex
+        if (phase === "entering" || phase === "exiting") {
+          if (idx !== currentImageIndex) return null
+        } else {
+          // Only show current image (and briefly the previous during fade)
+          if (!isCurrent && !isPrevious) return null
+        }
 
-          // 3D Card rotation: cards rotate on Y axis like flipping through cards
-          let rotateY = 0
-          let translateZ = 0
-          let translateX = 0
-          let opacity = 1
-          const zIndex = isCurrent ? 10 : 5
+        // Simple instant transition: current is always 100%, previous quickly fades
+        const opacity = isCurrent ? 1 : (fadeOutPrevious ? 0 : 1)
+        const zIndex = isCurrent ? 10 : 5
 
-          if (phase === "scrollable" && isTransitioning) {
-            if (isPrevious) {
-              // Previous card rotates away (like turning a page)
-              rotateY = fadeOutPrevious ? (slideDirection * -45) : 0
-              translateZ = fadeOutPrevious ? -200 : 0
-              translateX = fadeOutPrevious ? (slideDirection * -30) : 0
-              opacity = fadeOutPrevious ? 0 : 1
-            } else if (isCurrent) {
-              // Current card rotates in from behind
-              rotateY = fadeOutPrevious ? 0 : (slideDirection * 30)
-              translateZ = fadeOutPrevious ? 0 : -100
-              translateX = fadeOutPrevious ? 0 : (slideDirection * 20)
-              opacity = fadeOutPrevious ? 1 : 0.6
-            }
-          }
-
-          const transform3D = phase === "scrollable"
-            ? `translateX(${translateX}%) translateZ(${translateZ}px) rotateY(${rotateY}deg)`
-            : undefined
-
-          return (
-            <img
-              key={idx}
-              ref={isCurrent ? imageRef : undefined}
-              src={img || "/placeholder.svg"}
-              alt={`${displayTitle} - Image ${idx + 1}`}
-              crossOrigin="anonymous"
-              onLoad={isCurrent ? handleImageLoad : undefined}
-              style={{
-                ...getImageStyle(),
-                opacity,
-                zIndex,
-                transform: transform3D,
-                transformStyle: "preserve-3d",
-                backfaceVisibility: "hidden",
-                boxShadow: phase === "scrollable" && isTransitioning
-                  ? "0 25px 50px -12px rgba(0, 0, 0, 0.5)"
-                  : "none",
-                willChange: "transform, opacity",
-                pointerEvents: "auto",
-                transition:
-                  phase === "active"
-                    ? `all ${durations.enter}s ${easing}`
-                    : phase === "exiting"
-                      ? `all ${durations.exit}s ${easing}`
-                      : `transform ${durations.transition * 0.45}s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity ${durations.transition * 0.3}s ease-out`,
-              }}
-            />
-          )
-        })}
-      </div>
+        return (
+          <img
+            key={idx}
+            ref={isCurrent ? imageRef : undefined}
+            src={img || "/placeholder.svg"}
+            alt={`${displayTitle} - Image ${idx + 1}`}
+            crossOrigin="anonymous"
+            onLoad={isCurrent ? handleImageLoad : undefined}
+            style={{
+              ...getImageStyle(),
+              opacity,
+              zIndex,
+              willChange: "opacity",
+              pointerEvents: "auto",
+              transition:
+                phase === "active"
+                  ? `all ${durations.enter}s ${easing}`
+                  : phase === "exiting"
+                    ? `all ${durations.exit}s ${easing}`
+                    : `opacity 0.15s ease-out`, // Quick fade
+            }}
+          />
+        )
+      })}
 
       <button
         onClick={handleClose}
