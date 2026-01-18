@@ -418,59 +418,86 @@ export function ImageDetailView({
         }}
       />
 
-      {allImages.map((img, idx) => {
-        const isCurrent = idx === currentImageIndex
-        const isPrevious = idx === previousImageIndex && isTransitioning
+      {/* 3D Carousel Container with perspective */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          perspective: "1200px",
+          perspectiveOrigin: "center center",
+          transformStyle: "preserve-3d",
+          pointerEvents: "none",
+        }}
+      >
+        {allImages.map((img, idx) => {
+          const isCurrent = idx === currentImageIndex
+          const isPrevious = idx === previousImageIndex && isTransitioning
 
-        // During enter/exit, show currentImageIndex (the image that was clicked)
-        if (phase === "entering" || phase === "exiting") {
-          if (idx !== currentImageIndex) return null
-        } else {
-          // During scrollable phase, render current and previous (if transitioning)
-          if (!isCurrent && !isPrevious) return null
-        }
-
-        // Slide animation: previous slides out, current slides in
-        let translateX = 0
-        let opacity = 1
-        const zIndex = isCurrent ? 10 : 5
-
-        if (phase === "scrollable" && isTransitioning) {
-          if (isPrevious) {
-            // Previous image slides out in direction of navigation
-            translateX = fadeOutPrevious ? (slideDirection * -100) : 0
-            opacity = fadeOutPrevious ? 0 : 1
-          } else if (isCurrent) {
-            // Current image slides in from opposite side
-            translateX = fadeOutPrevious ? 0 : (slideDirection * 50)
-            opacity = fadeOutPrevious ? 1 : 0.5
+          // During enter/exit, only show currentImageIndex
+          if (phase === "entering" || phase === "exiting") {
+            if (idx !== currentImageIndex) return null
+          } else {
+            if (!isCurrent && !isPrevious) return null
           }
-        }
 
-        return (
-          <img
-            key={idx}
-            ref={isCurrent ? imageRef : undefined}
-            src={img || "/placeholder.svg"}
-            alt={`${displayTitle} - Image ${idx + 1}`}
-            crossOrigin="anonymous"
-            onLoad={isCurrent ? handleImageLoad : undefined}
-            style={{
-              ...getImageStyle(),
-              opacity,
-              zIndex,
-              transform: phase === "scrollable" ? `translateX(${translateX}%)` : undefined,
-              willChange: "transform, opacity",
-              transition:
-                phase === "active"
-                  ? `all ${durations.enter}s ${easing}`
-                  : phase === "exiting"
-                    ? `all ${durations.exit}s ${easing}`
-                    : `transform ${durations.transition * 0.4}s cubic-bezier(0.4, 0, 0.2, 1), opacity ${durations.transition * 0.3}s ease-out`,
-            }}
-          />
-        )
-      })}
+          // 3D Card rotation: cards rotate on Y axis like flipping through cards
+          let rotateY = 0
+          let translateZ = 0
+          let translateX = 0
+          let opacity = 1
+          const zIndex = isCurrent ? 10 : 5
+
+          if (phase === "scrollable" && isTransitioning) {
+            if (isPrevious) {
+              // Previous card rotates away (like turning a page)
+              rotateY = fadeOutPrevious ? (slideDirection * -45) : 0
+              translateZ = fadeOutPrevious ? -200 : 0
+              translateX = fadeOutPrevious ? (slideDirection * -30) : 0
+              opacity = fadeOutPrevious ? 0 : 1
+            } else if (isCurrent) {
+              // Current card rotates in from behind
+              rotateY = fadeOutPrevious ? 0 : (slideDirection * 30)
+              translateZ = fadeOutPrevious ? 0 : -100
+              translateX = fadeOutPrevious ? 0 : (slideDirection * 20)
+              opacity = fadeOutPrevious ? 1 : 0.6
+            }
+          }
+
+          const transform3D = phase === "scrollable"
+            ? `translateX(${translateX}%) translateZ(${translateZ}px) rotateY(${rotateY}deg)`
+            : undefined
+
+          return (
+            <img
+              key={idx}
+              ref={isCurrent ? imageRef : undefined}
+              src={img || "/placeholder.svg"}
+              alt={`${displayTitle} - Image ${idx + 1}`}
+              crossOrigin="anonymous"
+              onLoad={isCurrent ? handleImageLoad : undefined}
+              style={{
+                ...getImageStyle(),
+                opacity,
+                zIndex,
+                transform: transform3D,
+                transformStyle: "preserve-3d",
+                backfaceVisibility: "hidden",
+                boxShadow: phase === "scrollable" && isTransitioning
+                  ? "0 25px 50px -12px rgba(0, 0, 0, 0.5)"
+                  : "none",
+                willChange: "transform, opacity",
+                pointerEvents: "auto",
+                transition:
+                  phase === "active"
+                    ? `all ${durations.enter}s ${easing}`
+                    : phase === "exiting"
+                      ? `all ${durations.exit}s ${easing}`
+                      : `transform ${durations.transition * 0.45}s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity ${durations.transition * 0.3}s ease-out`,
+              }}
+            />
+          )
+        })}
+      </div>
 
       <button
         onClick={handleClose}
