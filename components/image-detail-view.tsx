@@ -496,17 +496,18 @@ export function ImageDetailView({
 
       <button
         onClick={handleClose}
+        aria-label="Close detail view"
         className={`fixed top-4 right-4 md:top-6 md:right-6 z-[1100] flex items-center gap-2 md:gap-2.5 px-4 py-2.5 md:px-5 md:py-3 rounded-full backdrop-blur-md ${bgColorClass} ${textColorClass} border ${borderColorClass} font-mono`}
         style={{
           fontSize: isMobile ? "0.7rem" : "0.75rem",
           letterSpacing: "0.15em",
           opacity: phase === "entering" ? 0 : 1,
           transform: phase === "entering" ? "translateY(-20px) scale(0.95)" : "translateY(0) scale(1)",
-          transition: `all ${durations.transition}s ${easing} 0.15s, background 0.2s ease`,
+          transition: `opacity 0.3s ease, transform 0.3s ease, background 0.2s ease`,
           minHeight: isMobile ? "44px" : "auto",
         }}
       >
-        <X className="w-4 h-4" strokeWidth={1.5} />
+        <X className="w-4 h-4" strokeWidth={1.5} aria-hidden="true" />
         <span className="uppercase font-medium hidden md:inline">Close</span>
       </button>
 
@@ -516,31 +517,33 @@ export function ImageDetailView({
             onClick={() => {
               if (currentImageIndex > 0) changeImage(currentImageIndex - 1)
             }}
+            aria-label="Previous image"
             className={`fixed left-3 md:left-6 top-1/2 -translate-y-1/2 z-[1100] p-3 md:p-3 rounded-full backdrop-blur-md ${bgColorClass} ${textColorClass} border ${borderColorClass}`}
             style={{
               opacity: currentImageIndex > 0 ? 1 : 0.3,
               pointerEvents: currentImageIndex > 0 ? "auto" : "none",
               minWidth: isMobile ? "44px" : "auto",
               minHeight: isMobile ? "44px" : "auto",
-              transition: `all ${durations.transition}s ${easing}`,
+              transition: `opacity 0.3s ease`,
             }}
           >
-            <ChevronLeft className="w-5 h-5 md:w-5 md:h-5" strokeWidth={1.5} />
+            <ChevronLeft className="w-5 h-5 md:w-5 md:h-5" strokeWidth={1.5} aria-hidden="true" />
           </button>
           <button
             onClick={() => {
               if (currentImageIndex < allImages.length - 1) changeImage(currentImageIndex + 1)
             }}
+            aria-label="Next image"
             className={`fixed right-3 md:right-6 top-1/2 -translate-y-1/2 z-[1100] p-3 md:p-3 rounded-full backdrop-blur-md ${bgColorClass} ${textColorClass} border ${borderColorClass}`}
             style={{
               opacity: currentImageIndex < allImages.length - 1 ? 1 : 0.3,
               pointerEvents: currentImageIndex < allImages.length - 1 ? "auto" : "none",
               minWidth: isMobile ? "44px" : "auto",
               minHeight: isMobile ? "44px" : "auto",
-              transition: `all ${durations.transition}s ${easing}`,
+              transition: `opacity 0.3s ease`,
             }}
           >
-            <ChevronRight className="w-5 h-5 md:w-5 md:h-5" strokeWidth={1.5} />
+            <ChevronRight className="w-5 h-5 md:w-5 md:h-5" strokeWidth={1.5} aria-hidden="true" />
           </button>
         </>
       )}
@@ -580,7 +583,7 @@ export function ImageDetailView({
         }}
       >
         <div className="max-w-3xl">
-          <h1 className="text-lg md:text-2xl font-light tracking-wide mb-3 md:mb-4 opacity-90 font-mono">
+          <h1 className="text-lg md:text-2xl font-light tracking-wide mb-3 md:mb-4 opacity-90 font-mono text-balance">
             {displayTitle}
           </h1>
           <p className={`text-xs md:text-base leading-relaxed max-w-2xl mb-3 md:mb-4 font-sans ${textMutedClass}`}>{displayDescription}</p>
@@ -622,6 +625,13 @@ export function ImageDetailView({
           }
           50% {
             transform: translateY(4px);
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          * {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
           }
         }
       `}</style>

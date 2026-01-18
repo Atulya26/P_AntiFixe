@@ -412,7 +412,7 @@ export function SpiralGallery({ projects }: SpiralGalleryProps) {
     <>
       <main
         ref={containerRef}
-        className="relative w-screen h-screen bg-black overflow-hidden touch-none cursor-grab select-none font-sans"
+        className="relative w-screen h-dvh bg-black overflow-hidden touch-none cursor-grab select-none font-sans"
       >
         <div
           className="absolute inset-0 pointer-events-none z-[1]"
@@ -452,6 +452,9 @@ export function SpiralGallery({ projects }: SpiralGalleryProps) {
             {cards.map((card) => (
               <div
                 key={card.index}
+                role="button"
+                tabIndex={0}
+                aria-label={`View ${card.title}`}
                 className="absolute cursor-pointer"
                 style={{
                   width: isMobile ? "200px" : "360px",
@@ -467,6 +470,12 @@ export function SpiralGallery({ projects }: SpiralGalleryProps) {
                   backfaceVisibility: "hidden",
                 }}
                 onClick={(e) => !isMobile && handleCardClick(card, e)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    handleCardClick(card, e as unknown as React.MouseEvent<HTMLDivElement>)
+                  }
+                }}
                 onTouchEnd={(e) => isMobile && handleCardTap(card, e)}
                 onMouseEnter={() => !isMobile && setHoveredCard(card.index)}
                 onMouseLeave={() => !isMobile && setHoveredCard(null)}
@@ -475,10 +484,10 @@ export function SpiralGallery({ projects }: SpiralGalleryProps) {
                   className="relative w-full h-full rounded-sm overflow-hidden"
                   style={{
                     transformStyle: "preserve-3d",
-                    transition: "box-shadow 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+                    transition: "box-shadow 0.4s ease",
                     boxShadow:
                       hoveredCard === card.index || tappedCard === card.index
-                        ? "0 40px 80px -20px rgba(0,0,0,0.9), 0 20px 40px -15px rgba(0,0,0,0.8), 0 0 60px rgba(80, 100, 200, 0.08)"
+                        ? "0 40px 80px -20px rgba(0,0,0,0.9), 0 20px 40px -15px rgba(0,0,0,0.8)"
                         : "0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 10px 20px -5px rgba(0,0,0,0.5)",
                   }}
                 >
@@ -591,6 +600,13 @@ export function SpiralGallery({ projects }: SpiralGalleryProps) {
             }
             50% {
               opacity: 0.8;
+            }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            * {
+              animation-duration: 0.01ms !important;
+              animation-iteration-count: 1 !important;
+              transition-duration: 0.01ms !important;
             }
           }
         `}</style>
